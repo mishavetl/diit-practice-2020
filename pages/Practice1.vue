@@ -11,6 +11,20 @@
         <a-input v-model="func" />
       </a-form-item>
       <a-form-item
+        :wrapper-col="{ span: 12 }"
+        :label-col="{ span: 5, offset: 2 }"
+        label="From"
+      >
+        <a-input v-model="from" />
+      </a-form-item>
+      <a-form-item
+        :wrapper-col="{ span: 12 }"
+        :label-col="{ span: 5, offset: 2 }"
+        label="To"
+      >
+        <a-input v-model="to" />
+      </a-form-item>
+      <a-form-item
         :label-col="{ span: 5, offset: 2 }"
         :wrapper-col="{ span: 12 }"
         :validate-status="methodValidate.status"
@@ -20,7 +34,7 @@
         <a-select
           v-model="method"
           @change="handleMethodChange"
-          placeholder="Select a option and change input text above"
+          placeholder="Select an option"
         >
           <a-select-option value="goldenRatio">
             Golden Ratio
@@ -37,8 +51,12 @@
       </a-form-item>
     </a-form>
     <client-only>
-      <vue-mathjax :formula="funcFormula"></vue-mathjax>
-      <vue-mathjax :formula="minimumFormula"></vue-mathjax>
+      <a-row type="flex" justify="center">
+        <vue-mathjax :formula="funcFormula"></vue-mathjax>
+      </a-row>
+      <a-row type="flex" justify="center">
+        <vue-mathjax :formula="minimumFormula"></vue-mathjax>
+      </a-row>
       <vue-plotly :data="data" :layout="layout" :options="options" />
     </client-only>
   </div>
@@ -68,20 +86,40 @@ export default {
         message: null
       },
       func: this.$store.state.func,
+      from: this.$store.state.from,
+      to: this.$store.state.to,
       method: 'gradientDescent',
-      data: this.getPlotData(this.$store.state.func),
+      data: this.getPlotData(
+        this.$store.state.func,
+        this.$store.state.from,
+        this.$store.state.to
+      ),
       layout: {},
       options: {},
       minimum: {},
-      funcFormula: this.getFuncFormula(this.$store.state.func),
+      funcFormula: this.getFuncFormula(
+        this.$store.state.func,
+        this.$store.state.from,
+        this.$store.state.to
+      ),
       minimumFormula: ''
     }
   },
   watch: {
     func: _.debounce(function() {
       this.$store.commit('setFunc', this.func)
-      this.data = this.getPlotData(this.func)
-      this.funcFormula = this.getFuncFormula(this.func)
+      this.data = this.getPlotData(this.func, this.from, this.to)
+      this.funcFormula = this.getFuncFormula(this.func, this.from, this.to)
+    }, 500),
+    from: _.debounce(function() {
+      this.$store.commit('setFrom', this.from)
+      this.data = this.getPlotData(this.func, this.from, this.to)
+      this.funcFormula = this.getFuncFormula(this.func, this.from, this.to)
+    }, 500),
+    to: _.debounce(function() {
+      this.$store.commit('setTo', this.to)
+      this.data = this.getPlotData(this.func, this.from, this.to)
+      this.funcFormula = this.getFuncFormula(this.func, this.from, this.to)
     }, 500)
   },
   methods: {
@@ -102,8 +140,8 @@ export default {
         message: null
       }
     },
-    getFuncFormula(func) {
-      return `$$f(x) = ${math.parse(func).toTex()}$$`
+    getFuncFormula(func, from, to) {
+      return `$$f(x) = ${math.parse(func).toTex()}, x \\in (${from}, ${to})$$`
     },
     findMinimumValue() {
       if (this.method === 'goldenRatio') {
@@ -111,9 +149,29 @@ export default {
       } else if (this.method === 'gradientDescent') {
         const expr = math.compile(this.func)
         try {
-          this.minimum = GradientDescent.findMinimumValue((x) =>
-            expr.evaluate({ x })
-          )
+          const step = 0.1
+          const epsilon = 1e-8
+          this.minimum = new GradientDescent(
+            (x) => expr.evaluate({ x }),
+            epsilon,
+            step
+          ).findMinimumValue(this.from, this.to, 1)
+
+          this.data.push({
+            x: this.minimum.localXs,
+            y: this.minimum.localYs,
+            mode: 'markers',
+            type: 'scatter'
+          })
+
+          this.minimum.localIters.forEach((iteration) => {
+            this.data.push({
+              x: iteration.xs,
+              y: iteration.ys,
+              mode: 'markers',
+              type: 'scatter'
+            })
+          })
 
           this.minimumFormula = `$$min f(x) = (${this.minimum.x}, ${this.minimum.y})$$`
 
@@ -125,7 +183,7 @@ export default {
         }
       }
     },
-    getPlotData(expression) {
+    getPlotData(expression, from, to) {
       try {
         const expr = math.compile(expression)
 
@@ -134,7 +192,7 @@ export default {
           message: null
         }
 
-        const xValues = math.range(-20, 20, 0.1).toArray()
+        const xValues = math.range(from, to, 0.1).toArray()
         const yValues = xValues.map(function(x) {
           return expr.evaluate({ x })
         })
