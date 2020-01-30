@@ -12,14 +12,14 @@ export class GradientDescent {
     this.step = step
   }
 
-  findLocalMinimum(x0) {
+  findLocalMinimum(x0, from, to, maxIterations) {
     let xPrev = x0
     let x = xPrev
     let grad
     let count = 0
 
-    const xs = []
-    const ys = []
+    const xs = [x0]
+    const ys = [this.f(x0)]
 
     do {
       grad = derivative(this.f, x, this.epsilon)
@@ -27,16 +27,32 @@ export class GradientDescent {
         xs.push(x)
         ys.push(this.f(x))
         x = xPrev - this.step * grad
-        console.log(x, xPrev, grad, this.f(x), this.f(xPrev))
+        x = _.min([x, to])
+        x = _.max([x, from])
+        // console.log(x, xPrev, grad, this.f(x), this.f(xPrev))
         xPrev = x
         ++count
-      } while (this.f(x) < this.f(xPrev))
-    } while (Math.abs(grad) >= this.epsilon)
+      } while (
+        count < maxIterations &&
+        this.f(x) < this.f(xPrev) &&
+        Math.abs(this.step * grad) >= this.epsilon
+      )
+    } while (
+      count < maxIterations &&
+      Math.abs(this.step * grad) >= this.epsilon
+    )
 
-    return { xs, ys, x, y: this.f(x), count }
+    const yObject = _.minBy(
+      ys.map((y, index) => ({
+        y,
+        index
+      })),
+      'y'
+    )
+    return { xs, ys, x: xs[yObject.index], y: yObject.y, count }
   }
 
-  findMinimumValue(from, to, iterations) {
+  findMinimumValue(from, to, iterations, maxLocalIterations) {
     const chance = new Chance()
     const localXs = []
     const localYs = []
@@ -47,7 +63,7 @@ export class GradientDescent {
     for (let i = 0; i < iterations; ++i) {
       const x0 = chance.floating({ min: from, max: to })
       console.log(x0)
-      const iteration = this.findLocalMinimum(x0)
+      const iteration = this.findLocalMinimum(x0, from, to, maxLocalIterations)
       localXs.push(iteration.x)
       localYs.push(iteration.y)
       localIters.push(iteration)
@@ -56,7 +72,20 @@ export class GradientDescent {
 
     console.log(count)
 
-    const x = _.min(localXs)
-    return { localXs, localYs, localIters, x, y: this.f(x) }
+    const yObject = _.minBy(
+      localYs.map((y, index) => ({
+        y,
+        index
+      })),
+      'y'
+    )
+    // console.log(yObject)
+    return {
+      localXs,
+      localYs,
+      localIters,
+      x: localXs[yObject.index],
+      y: yObject.y
+    }
   }
 }

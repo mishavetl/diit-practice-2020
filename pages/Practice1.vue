@@ -15,14 +15,14 @@
         :label-col="{ span: 5, offset: 2 }"
         label="From"
       >
-        <a-input v-model="from" />
+        <a-input-number :step="0.1" v-model.number="from" style="width: 100%" />
       </a-form-item>
       <a-form-item
         :wrapper-col="{ span: 12 }"
         :label-col="{ span: 5, offset: 2 }"
         label="To"
       >
-        <a-input v-model="to" />
+        <a-input-number :step="0.1" v-model.number="to" style="width: 100%" />
       </a-form-item>
       <a-form-item
         :label-col="{ span: 5, offset: 2 }"
@@ -44,9 +44,50 @@
           </a-select-option>
         </a-select>
       </a-form-item>
+      <a-form-item
+        :wrapper-col="{ span: 12 }"
+        :label-col="{ span: 5, offset: 2 }"
+        label="ε"
+      >
+        <a-input-number
+          :step="0.1"
+          v-model.number="epsilon"
+          style="width: 100%"
+        />
+      </a-form-item>
+      <a-form-item
+        :wrapper-col="{ span: 12 }"
+        :label-col="{ span: 5, offset: 2 }"
+        v-show="method === 'gradientDescent'"
+        label="Step"
+      >
+        <a-input-number :step="0.1" v-model.number="step" style="width: 100%" />
+      </a-form-item>
+      <a-form-item
+        :wrapper-col="{ span: 12 }"
+        :label-col="{ span: 5, offset: 2 }"
+        v-show="method === 'gradientDescent'"
+        label="Iterations"
+      >
+        <a-input v-model.number="iterations" />
+      </a-form-item>
+      <a-form-item
+        :wrapper-col="{ span: 12 }"
+        :label-col="{ span: 5, offset: 2 }"
+        v-show="method === 'gradientDescent'"
+        label="Max local iterations"
+      >
+        <a-input v-model.number="maxLocalIterations" />
+      </a-form-item>
       <a-form-item>
         <a-button type="primary" html-type="submit">
-          Find the minimum point
+          <span
+            v-html="
+              method === 'gradientDescent'
+                ? 'Find the minimum point'
+                : 'Find zero point'
+            "
+          ></span>
         </a-button>
       </a-form-item>
     </a-form>
@@ -65,7 +106,7 @@
 <script>
 import { create, all } from 'mathjs'
 import _ from 'lodash'
-// import goldenratio from 'goldenratio'
+import { GoldenRatio } from '@/assets/goldenratio.js'
 import { GradientDescent } from '@/assets/gradientdescent.js'
 
 const math = create(all, {})
@@ -102,6 +143,10 @@ export default {
         this.$store.state.from,
         this.$store.state.to
       ),
+      step: 0.1,
+      epsilon: 0.000000001,
+      iterations: 10,
+      maxLocalIterations: 200,
       minimumFormula: ''
     }
   },
@@ -144,44 +189,82 @@ export default {
       return `$$f(x) = ${math.parse(func).toTex()}, x \\in (${from}, ${to})$$`
     },
     findMinimumValue() {
-      if (this.method === 'goldenRatio') {
-        //
-      } else if (this.method === 'gradientDescent') {
-        const expr = math.compile(this.func)
+      setTimeout(() => {
+        this.data = this.getPlotData(this.func, this.from, this.to)
         try {
-          const step = 0.1
-          const epsilon = 1e-8
-          this.minimum = new GradientDescent(
-            (x) => expr.evaluate({ x }),
-            epsilon,
-            step
-          ).findMinimumValue(this.from, this.to, 1)
-
-          this.data.push({
-            x: this.minimum.localXs,
-            y: this.minimum.localYs,
-            mode: 'markers',
-            type: 'scatter'
-          })
-
-          this.minimum.localIters.forEach((iteration) => {
+          const expr = math.compile(this.func)
+          if (this.method === 'goldenRatio') {
+            this.minimum = new GoldenRatio(
+              (x) => expr.evaluate({ x }),
+              this.epsilon
+            ).findMinimumValue(this.from, this.to)
             this.data.push({
-              x: iteration.xs,
-              y: iteration.ys,
+              x: [this.minimum.x],
+              y: [this.minimum.y],
+              name: 'Minimum',
               mode: 'markers',
               type: 'scatter'
             })
-          })
 
-          this.minimumFormula = `$$min f(x) = (${this.minimum.x}, ${this.minimum.y})$$`
+            this.data.push({
+              x: this.minimum.leftXs,
+              y: this.minimum.leftYs,
+              name: 'Left',
+              mode: 'markers',
+              type: 'scatter'
+            })
+            this.data.push({
+              x: this.minimum.rightXs,
+              y: this.minimum.rightYs,
+              name: 'Right',
+              mode: 'markers',
+              type: 'scatter'
+            })
+            this.minimumFormula = `$$f(x) = 0, (x, y) = (${this.minimum.x}, ${this.minimum.y})$$`
+          } else if (this.method === 'gradientDescent') {
+            this.minimum = new GradientDescent(
+              (x) => expr.evaluate({ x }),
+              this.epsilon,
+              this.step
+            ).findMinimumValue(
+              this.from,
+              this.to,
+              this.iterations,
+              this.maxLocalIterations
+            )
+            this.data.push({
+              x: [this.minimum.x],
+              y: [this.minimum.y],
+              name: 'Minimum',
+              mode: 'markers',
+              type: 'scatter'
+            })
 
-          console.log(this.minimum.xs)
-          console.log('min Х =', this.minimum.x)
-          console.log('min Y =', this.minimum.y)
+            this.data.push({
+              x: this.minimum.localXs,
+              y: this.minimum.localYs,
+              mode: 'markers',
+              type: 'scatter'
+            })
+
+            this.minimum.localIters.forEach((iteration) => {
+              this.data.push({
+                x: iteration.xs,
+                y: iteration.ys,
+                mode: 'markers',
+                type: 'scatter'
+              })
+            })
+
+            this.minimumFormula = `$$min f(x) = (${this.minimum.x}, ${this.minimum.y})$$`
+
+            console.log('min Х =', this.minimum.x)
+            console.log('min Y =', this.minimum.y)
+          }
         } catch (err) {
           console.log(err)
         }
-      }
+      })
     },
     getPlotData(expression, from, to) {
       try {
@@ -192,7 +275,7 @@ export default {
           message: null
         }
 
-        const xValues = math.range(from, to, 0.1).toArray()
+        const xValues = math.range(from, to, 0.001).toArray()
         const yValues = xValues.map(function(x) {
           return expr.evaluate({ x })
         })
