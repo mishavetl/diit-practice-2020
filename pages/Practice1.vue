@@ -109,11 +109,13 @@ import _ from 'lodash'
 import { GoldenRatio } from '@/assets/goldenratio.js'
 import { GradientDescent } from '@/assets/gradientdescent.js'
 
+const VuePlotly = () => import('@statnett/vue-plotly')
+
 const math = create(all, {})
 
 export default {
   components: {
-    VuePlotly: () => import('@statnett/vue-plotly')
+    VuePlotly
   },
   data() {
     return {
@@ -220,7 +222,11 @@ export default {
               mode: 'markers',
               type: 'scatter'
             })
-            this.minimumFormula = `$$f(x) = 0, (x, y) = (${this.minimum.x}, ${this.minimum.y})$$`
+            if (this.minimum.y <= this.epsilon) {
+              this.minimumFormula = `$$f(x) = 0, (x, y) = (${this.minimum.x}, ${this.minimum.y})$$`
+            } else {
+              this.minimumFormula = `$$f(x) = 0, x \\in \\emptyset$$`
+            }
           } else if (this.method === 'gradientDescent') {
             this.minimum = new GradientDescent(
               (x) => expr.evaluate({ x }),
