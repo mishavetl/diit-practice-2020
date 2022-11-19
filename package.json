@@ -22,7 +22,7 @@
     "cross-env": "^5.2.0",
     "koa": "^2.6.2",
     "mathjs": "^6.5.0",
-    "nuxt": "^2.0.0",
+    "nuxt": "^2.15.8",
     "plotly.js": "^1.52.1",
     "vue-mathjax": "0.0.11",
     "vue-numeric-input": "^1.0.6"
