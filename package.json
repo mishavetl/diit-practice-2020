@@ -22,14 +22,14 @@
     "cross-env": "^5.2.0",
     "koa": "^2.6.2",
     "mathjs": "^6.5.0",
-    "nuxt": "^2.0.0",
+    "nuxt": "^2.11.0",
     "plotly.js": "^1.52.1",
     "vue-mathjax": "0.0.11",
     "vue-numeric-input": "^1.0.6"
   },
   "devDependencies": {
     "@nuxtjs/eslint-config": "^1.0.1",
-    "@nuxtjs/eslint-module": "^1.0.0",
+    "@nuxtjs/eslint-module": "^1.2.0",
     "@vue/test-utils": "^1.0.0-beta.27",
     "babel-eslint": "^10.0.1",
     "babel-jest": "^24.1.0",
@@ -41,7 +41,7 @@
     "node-sass": "^4.13.1",
     "nodemon": "^1.18.9",
     "prettier": "^1.16.4",
-    "sass-loader": "^8.0.2",
+    "sass-loader": "^13.2.0",
     "vue-jest": "^4.0.0-0"
   }
 }
